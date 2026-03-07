@@ -72,6 +72,8 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener{
     Timer gameLoop;
     Timer placePipesTimer;
 
+    boolean gameOver = false;
+
     FlappyBird(){
         setPreferredSize(new Dimension(LarguraBorda, AlturaBorda));
         setFocusable(true);
@@ -103,8 +105,14 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener{
     }
 
     public void placePipes (){
+        int randomPipeY = (int)(PipeY - PipeHeight/4 - Math.random() * (PipeHeight/2));
+        int openingSpace = AlturaBorda / 4; 
         Pipe topPipe = new Pipe(topPipeImage);
-        pipes.add(topPipe);
+        topPipe.y = randomPipeY;
+        pipes.add(topPipe); 
+        Pipe bottomPipe = new Pipe(bottomPipeImage);
+        bottomPipe.y = topPipe.y + PipeHeight + openingSpace;
+        pipes.add(bottomPipe);
     }
 
     public void draw (Graphics g){
@@ -126,14 +134,37 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener{
         for (int i = 0; i < pipes.size(); i++){
             Pipe pipe = pipes.get(i);
             pipe.x += VelocityX;
-        }  
 
+            if (collision(bird, pipe)){
+            gameOver = true;
+            }
+        } 
+        
+        if (bird.y > AlturaBorda){
+            gameOver = true;
+        }
+
+        
+
+
+    }
+
+    public boolean collision(Bird a, Pipe b){
+        return a.x < b.x + b.width &&
+               a.x + a.width > b.x &&
+               a.y < b.y + b.height &&
+               a.y + a.height > b.y;
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         move();
         repaint();
+
+        if (gameOver){
+            placePipesTimer.stop();
+            gameLoop.stop();
+        }
     }
 
     @Override
