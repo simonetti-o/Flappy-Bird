@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird 🐦</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #facc15;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(250,204,21,0.4);
+        }
+
+        .layout {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            border-radius: 12px;
+            box-shadow: 0 0 40px rgba(250,204,21,0.2);
+            cursor: pointer;
+        }
+
+        .hint {
+            color: #475569;
+            font-size: 13px;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* Leaderboard */
+        .leaderboard {
+            background: #1e293b;
+            border: 2px solid #facc15;
+            border-radius: 12px;
+            padding: 20px;
+            width: 260px;
+            color: white;
+        }
+
+        .lb-title {
+            color: #facc15;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 16px;
+            letter-spacing: 2px;
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 8px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .lb-rank  { font-size: 18px; width: 32px; text-align: center; }
+        .lb-name  { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lb-score { font-weight: bold; font-size: 16px; color: #facc15; }
+
+        .lb-empty {
+            color: #475569;
+            text-align: center;
+            padding: 24px 0;
+            font-size: 14px;
+        }
+
+        .lb-status {
+            color: #475569;
+            font-size: 11px;
+            text-align: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #334155;
+        }
+
+        .lb-status.online { color: #4ade80; }
+
+        /* Modal */
+        .backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .backdrop.open { display: flex; }
+
+        .modal {
+            background: #1e293b;
+            border: 2px solid #facc15;
+            border-radius: 16px;
+            padding: 32px 28px;
+            width: 320px;
+            text-align: center;
+            color: white;
+            animation: popIn 0.3s cubic-bezier(.175,.885,.32,1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+
+        .modal-title  { font-size: 2rem; color: #f87171; font-weight: bold; margin-bottom: 4px; }
+        .modal-score  { font-size: 4rem; font-weight: bold; color: #facc15; line-height: 1; margin: 12px 0; }
+        .modal-best   { color: #64748b; font-size: 13px; margin-bottom: 20px; }
+        .modal-best.new-record { color: #4ade80; font-weight: bold; }
+
+        .modal label {
+            display: block;
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 8px;
+            text-align: left;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 12px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .modal input:focus { border-color: #facc15; }
+        .modal input.error { border-color: #f87171; }
+
+        .btn-save {
+            width: 100%;
+            margin-top: 12px;
+            padding: 13px;
+            background: #facc15;
+            color: #0f172a;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+
+        .btn-save:hover  { opacity: 0.9; }
+        .btn-save:active { transform: scale(0.98); }
+        .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-skip {
+            width: 100%;
+            margin-top: 8px;
+            padding: 10px;
+            background: transparent;
+            color: #475569;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .btn-skip:hover { color: #94a3b8; border-color: #475569; }
+
+        .modal-notice { color: #475569; font-size: 11px; margin-top: 14px; }
+        .modal-notice a { color: #60a5fa; }
+
+        @media (max-width: 680px) {
+            .layout { gap: 16px; }
+            .leaderboard { width: 100%; max-width: 360px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🐦 Flappy Bird</h1>
+
+    <div class="layout">
+        <div>
+            <canvas id="canvas" width="360" height="640"></canvas>
+            <p class="hint">Espaço / Clique / Toque para voar</p>
+        </div>
+
+        <div class="leaderboard">
+            <div class="lb-title">🏆 RANKING</div>
+            <div id="lb-list">
+                <div class="lb-empty">Seja o primeiro a jogar!</div>
+            </div>
+            <div class="lb-status" id="lb-status">Carregando...</div>
+        </div>
+    </div>
+
+    <div class="backdrop" id="backdrop">
+        <div class="modal">
+            <div class="modal-title">GAME OVER</div>
+            <div class="modal-score" id="modal-score">0</div>
+            <div class="modal-best"  id="modal-best"></div>
+            <label for="name-input">Seu nome no ranking:</label>
+            <input id="name-input" type="text" placeholder="Seu nome" maxlength="20" autocomplete="off" />
+            <button class="btn-save" id="btn-save">Salvar no Ranking 🏆</button>
+            <button class="btn-skip" id="btn-skip">Jogar novamente sem salvar</button>
+            <div class="modal-notice" id="modal-notice"></div>
+        </div>
+    </div>
+
+    <script type="module">
+
+        // ================================================================
+        // CONFIGURACAO DO FIREBASE
+        // Siga o README.md para obter esses dados do seu projeto Firebase.
+        // O ranking online so funciona depois de preencher o databaseURL.
+        // ================================================================
+        const FIREBASE_CONFIG = {
+            apiKey:            "",
+            authDomain:        "",
+            databaseURL:       "",   // ex: https://meu-projeto-default-rtdb.firebaseio.com
+            projectId:         "",
+            storageBucket:     "",
+            messagingSenderId: "",
+            appId:             ""
+        };
+        // ================================================================
+
+        const ONLINE = FIREBASE_CONFIG.databaseURL !== "";
+        let db = null;
+        let fbRef, fbPush, fbQuery, fbOrderBy, fbLimitTo, fbOnValue;
+
+        async function initFirebase() {
+            const status = document.getElementById('lb-status');
+            if (!ONLINE) {
+                status.textContent = '📱 Ranking local (Firebase não configurado)';
+                loadLocalLeaderboard();
+                return;
+            }
+            try {
+                const { initializeApp } =
+                    await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+                const { getDatabase, ref, push, query, orderByChild, limitToLast, onValue } =
+                    await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+
+                db = getDatabase(initializeApp(FIREBASE_CONFIG));
+                fbRef = ref; fbPush = push; fbQuery = query;
+                fbOrderBy = orderByChild; fbLimitTo = limitToLast; fbOnValue = onValue;
+
+                const q = fbQuery(fbRef(db, 'scores'), fbOrderBy('score'), fbLimitTo(10));
+                fbOnValue(q, snap => {
+                    const arr = [];
+                    snap.forEach(c => arr.push(c.val()));
+                    arr.sort((a, b) => b.score - a.score);
+                    renderLeaderboard(arr);
+                });
+
+                status.className = 'lb-status online';
+                status.textContent = '🌐 Ranking online ativo';
+            } catch (e) {
+                console.error('Firebase:', e);
+                status.textContent = '⚠️ Erro no Firebase – usando modo local';
+                loadLocalLeaderboard();
+            }
+        }
+
+        async function pushScore(name, score) {
+            if (!db) return;
+            await fbPush(fbRef(db, 'scores'), {
+                name: name.substring(0, 20),
+                score,
+                at: Date.now()
+            });
+        }
+
+        // --- Local Storage ---
+        function localScores() {
+            try { return JSON.parse(localStorage.getItem('flappy_scores') || '[]'); }
+            catch { return []; }
+        }
+
+        function saveLocal(name, score) {
+            const arr = localScores();
+            arr.push({ name, score, at: Date.now() });
+            arr.sort((a, b) => b.score - a.score);
+            localStorage.setItem('flappy_scores', JSON.stringify(arr.slice(0, 50)));
+        }
+
+        function bestLocal() {
+            const arr = localScores();
+            return arr.length ? arr[0].score : 0;
+        }
+
+        function loadLocalLeaderboard() {
+            renderLeaderboard(localScores().slice(0, 10));
+        }
+
+        // --- Render ---
+        const MEDALS = ['🥇', '🥈', '🥉'];
+
+        function renderLeaderboard(scores) {
+            const list = document.getElementById('lb-list');
+            if (!scores || !scores.length) {
+                list.innerHTML = '<div class="lb-empty">Seja o primeiro a jogar!</div>';
+                return;
+            }
+            list.innerHTML = scores.map((s, i) => `
+                <div class="lb-row">
+                    <span class="lb-rank">${MEDALS[i] || (i + 1) + 'º'}</span>
+                    <span class="lb-name">${esc(s.name)}</span>
+                    <span class="lb-score">${s.score}</span>
+                </div>
+            `).join('');
+        }
+
+        function esc(s) {
+            return String(s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // ================================================================
+        // JOGO
+        // ================================================================
+        const canvas  = document.getElementById('canvas');
+        const ctx     = canvas.getContext('2d');
+
+        const W = 360, H = 640;
+        const PIPE_W = 64, PIPE_H = 512, PIPE_GAP = H / 4;  // gap = 160
+        const BIRD_W = 34, BIRD_H = 24;
+        const BIRD_START_X = W / 8, BIRD_START_Y = H / 2;   // 45, 320
+        const VEL_X = -4, GRAV = 1, JUMP = -9;
+
+        const imgs = {};
+        let loaded = 0;
+        const SRCS = {
+            bg:   'src/flappybirdbg.png',
+            bird: 'src/flappybird.png',
+            top:  'src/toppipe.png',
+            bot:  'src/bottompipe.png'
+        };
+
+        for (const [k, src] of Object.entries(SRCS)) {
+            const img = new Image();
+            img.onload = () => { imgs[k] = img; if (++loaded === 4) init(); };
+            img.onerror = () => { imgs[k] = null; if (++loaded === 4) init(); };
+            img.src = src;
+        }
+
+        let bird, pipes, score, velY, started, over, pipeTimer;
+
+        function reset() {
+            bird    = { x: BIRD_START_X, y: BIRD_START_Y };
+            pipes   = [];
+            score   = 0;
+            velY    = 0;
+            started = false;
+            over    = false;
+            clearInterval(pipeTimer);
+        }
+
+        function begin() {
+            started   = true;
+            placePipes();
+            pipeTimer = setInterval(placePipes, 1500);
+        }
+
+        function placePipes() {
+            const y = -PIPE_H / 4 - Math.random() * (PIPE_H / 2);
+            pipes.push({ x: W, y,                    kind: 'top', passed: false });
+            pipes.push({ x: W, y: y + PIPE_H + PIPE_GAP, kind: 'bot', passed: false });
+        }
+
+        function update() {
+            if (!started || over) return;
+
+            velY      += GRAV;
+            bird.y     = Math.max(0, bird.y + velY);
+
+            for (const p of pipes) {
+                p.x += VEL_X;
+                if (!p.passed && bird.x > p.x + PIPE_W) {
+                    p.passed = true;
+                    score   += 0.5;
+                }
+                if (hit(p)) { endGame(); return; }
+            }
+
+            if (bird.y > H) { endGame(); return; }
+
+            pipes = pipes.filter(p => p.x + PIPE_W > 0);
+        }
+
+        function hit(p) {
+            return bird.x          < p.x + PIPE_W &&
+                   bird.x + BIRD_W > p.x          &&
+                   bird.y          < p.y + PIPE_H &&
+                   bird.y + BIRD_H > p.y;
+        }
+
+        function endGame() {
+            over = true;
+            clearInterval(pipeTimer);
+            setTimeout(() => showModal(Math.floor(score)), 400);
+        }
+
+        function draw() {
+            if (imgs.bg) ctx.drawImage(imgs.bg, 0, 0, W, H);
+            else { ctx.fillStyle = '#70c5ce'; ctx.fillRect(0, 0, W, H); }
+
+            for (const p of pipes) {
+                const img = p.kind === 'top' ? imgs.top : imgs.bot;
+                if (img) ctx.drawImage(img, p.x, p.y, PIPE_W, PIPE_H);
+                else {
+                    ctx.fillStyle = '#228B22';
+                    ctx.fillRect(p.x, p.y, PIPE_W, PIPE_H);
+                }
+            }
+
+            if (imgs.bird) ctx.drawImage(imgs.bird, bird.x, bird.y, BIRD_W, BIRD_H);
+            else {
+                ctx.fillStyle = '#facc15';
+                ctx.fillRect(bird.x, bird.y, BIRD_W, BIRD_H);
+            }
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText(Math.floor(score), 10, 30);
+
+            if (!started) {
+                ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 22px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Pressione ESPACO', W / 2, H / 2 - 20);
+                ctx.fillText('ou clique para comecar!', W / 2, H / 2 + 15);
+                ctx.textAlign = 'left';
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        function jump() {
+            if (over) return;
+            if (!started) begin();
+            velY = JUMP;
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') { e.preventDefault(); jump(); }
+        });
+        canvas.addEventListener('click', jump);
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, { passive: false });
+
+        // ================================================================
+        // MODAL GAME OVER
+        // ================================================================
+        const backdrop   = document.getElementById('backdrop');
+        const modalScore = document.getElementById('modal-score');
+        const modalBest  = document.getElementById('modal-best');
+        const nameInput  = document.getElementById('name-input');
+        const btnSave    = document.getElementById('btn-save');
+        const btnSkip    = document.getElementById('btn-skip');
+        const modalNote  = document.getElementById('modal-notice');
+
+        let pending = 0;
+
+        function showModal(s) {
+            pending = s;
+            modalScore.textContent = s;
+
+            const best = bestLocal();
+            if (s > best && best >= 0) {
+                modalBest.textContent = '🎉 Novo recorde pessoal!';
+                modalBest.className   = 'modal-best new-record';
+            } else if (best > 0) {
+                modalBest.textContent = `Seu recorde: ${best}`;
+                modalBest.className   = 'modal-best';
+            } else {
+                modalBest.textContent = '';
+            }
+
+            nameInput.value = localStorage.getItem('flappy_name') || '';
+            nameInput.classList.remove('error');
+
+            modalNote.innerHTML = ONLINE
+                ? ''
+                : '⚠️ Ranking local. <a href="README.md" target="_blank">Ativar ranking online →</a>';
+
+            backdrop.classList.add('open');
+            setTimeout(() => { nameInput.focus(); nameInput.select(); }, 120);
+        }
+
+        function closeModal() {
+            backdrop.classList.remove('open');
+            reset();
+        }
+
+        btnSave.addEventListener('click', async () => {
+            const name = nameInput.value.trim();
+            if (!name) { nameInput.classList.add('error'); nameInput.focus(); return; }
+            nameInput.classList.remove('error');
+            localStorage.setItem('flappy_name', name);
+
+            saveLocal(name, pending);
+
+            if (ONLINE) {
+                btnSave.textContent = 'Salvando...';
+                btnSave.disabled    = true;
+                await pushScore(name, pending);
+                btnSave.textContent = 'Salvar no Ranking 🏆';
+                btnSave.disabled    = false;
+            } else {
+                loadLocalLeaderboard();
+            }
+
+            closeModal();
+        });
+
+        btnSkip.addEventListener('click', closeModal);
+
+        nameInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') btnSave.click();
+        });
+
+        // ================================================================
+        // INIT
+        // ================================================================
+        function init() {
+            reset();
+            initFirebase();
+            loop();
+        }
+    </script>
+</body>
+</html>
