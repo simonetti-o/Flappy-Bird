@@ -364,7 +364,7 @@
         const faceImg = new Image();
         faceImg.onload  = () => { imgs.bird = faceImg; if (++loaded === Object.keys(SRCS).length + 1) init(); };
         faceImg.onerror = () => { imgs.bird = null;    if (++loaded === Object.keys(SRCS).length + 1) init(); };
-        faceImg.src = FACE_DATA;
+        faceImg.src = 'data:image/png;base64,' + FACE_DATA;
 
         let bird, pipes, score, velY, started, over, pipeTimer;
 
